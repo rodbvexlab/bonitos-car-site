@@ -8,8 +8,13 @@ import FloatingWhatsApp from './components/shared/FloatingWhatsApp'
 
 function AnimatedRoutes() {
   const location = useLocation()
+
+  const handleExitComplete = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }
+
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" onExitComplete={handleExitComplete}>
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
         <Route path="/leves" element={<Leves />} />
