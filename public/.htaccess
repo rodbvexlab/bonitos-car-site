@@ -1,12 +1,34 @@
 Options -MultiViews
 RewriteEngine On
 
-# ── Redirecionar URLs antigas (.html) para rotas novas — 301 permanente ──
-Redirect 301 /leves.html https://www.bonitoscar.com.br/leves
-Redirect 301 /pesados.html https://www.bonitoscar.com.br/pesados
-Redirect 301 /orcamento.html https://www.bonitoscar.com.br/orcamento
-Redirect 301 /index.html https://www.bonitoscar.com.br/
+# Legacy HTML URLs requested directly by the client
+RewriteCond %{THE_REQUEST} \s/+index\.html[?\s] [NC]
+RewriteRule ^index\.html$ https://www.bonitoscar.com.br/ [R=301,L]
 
-# ── React Router SPA fallback ──
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ index.html [QSA,L]
+RewriteCond %{THE_REQUEST} \s/+leves\.html[?\s] [NC]
+RewriteRule ^leves\.html$ https://www.bonitoscar.com.br/leves [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/+pesados\.html[?\s] [NC]
+RewriteRule ^pesados\.html$ https://www.bonitoscar.com.br/pesados [R=301,L]
+
+RewriteCond %{THE_REQUEST} \s/+orcamento\.html[?\s] [NC]
+RewriteRule ^orcamento\.html$ https://www.bonitoscar.com.br/orcamento [R=301,L]
+
+# Public route trailing slash canonicalization
+RewriteRule ^(leves|pesados|orcamento)/$ https://www.bonitoscar.com.br/$1 [R=301,L]
+
+# Hostinger currently handles HTTP to HTTPS; this rule canonicalizes non-www to www.
+RewriteCond %{HTTP_HOST} !^www\.bonitoscar\.com\.br$ [NC]
+RewriteRule ^ https://www.bonitoscar.com.br%{REQUEST_URI} [R=301,L,NE]
+
+# Existing physical files and directories
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Valid SPA routes
+RewriteRule ^$ index.html [END]
+RewriteRule ^(leves|pesados|orcamento)$ index.html [END]
+
+# Unknown URLs should return a real 404
+RewriteRule ^ - [R=404,L]
