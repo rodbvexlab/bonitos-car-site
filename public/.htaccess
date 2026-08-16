@@ -1,0 +1,12 @@
+Options -MultiViews
+RewriteEngine On
+
+# ── Redirecionar URLs antigas (.html) para rotas novas — 301 permanente ──
+Redirect 301 /leves.html https://www.bonitoscar.com.br/leves
+Redirect 301 /pesados.html https://www.bonitoscar.com.br/pesados
+Redirect 301 /orcamento.html https://www.bonitoscar.com.br/orcamento
+Redirect 301 /index.html https://www.bonitoscar.com.br/
+
+# ── React Router SPA fallback ──
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.html [QSA,L]
