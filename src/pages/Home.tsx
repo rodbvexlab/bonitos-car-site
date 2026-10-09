@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Header from '../components/layout/Header'
+import { openPrivacyPreferences } from '../lib/analytics'
 
 // ── Design tokens ──────────────────────────────────────────
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -305,16 +306,29 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Single CTA — right aligned */}
-          <Link
-            to="/orcamento"
-            className="font-condensed text-xs font-semibold uppercase tracking-widest ml-auto transition-colors duration-200"
-            style={{ letterSpacing: '0.18em', color: 'rgba(255,255,255,0.35)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
-          >
-            Solicitar Orçamento →
-          </Link>
+          <div className="ml-auto flex items-center gap-6 md:gap-8">
+            {/* Privacy preferences — same weight as the trust metrics */}
+            <button
+              type="button"
+              onClick={openPrivacyPreferences}
+              aria-label="Preferências de privacidade"
+              className="font-condensed text-xs uppercase tracking-widest -my-3.5 py-3.5 transition-colors duration-200 hover:!text-white/60 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white/30"
+              style={{ letterSpacing: '0.18em', color: 'rgba(255,255,255,0.3)' }}
+            >
+              Privacidade
+            </button>
+
+            {/* Single CTA — right aligned */}
+            <Link
+              to="/orcamento"
+              className="font-condensed text-xs font-semibold uppercase tracking-widest transition-colors duration-200"
+              style={{ letterSpacing: '0.18em', color: 'rgba(255,255,255,0.35)' }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
+            >
+              Solicitar Orçamento →
+            </Link>
+          </div>
         </div>
       </motion.footer>
     </motion.div>

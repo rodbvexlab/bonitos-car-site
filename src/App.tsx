@@ -8,6 +8,7 @@ import Orcamento from './pages/Orcamento'
 import NotFound from './pages/NotFound'
 import { applyRouteSeo } from './lib/seo'
 import FloatingWhatsApp from './components/shared/FloatingWhatsApp'
+import PrivacyConsent from './components/shared/PrivacyConsent'
 
 function AnimatedRoutes() {
   const location = useLocation()
@@ -38,6 +39,7 @@ export default function App() {
     <BrowserRouter>
       <AnimatedRoutes />
       <FloatingWhatsApp />
+      <PrivacyConsent />
     </BrowserRouter>
   )
 }
