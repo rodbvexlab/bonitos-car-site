@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { LOCATIONS, WA_LINKS } from '../../lib/data'
+import { openPrivacyPreferences } from '../../lib/analytics'
 
 export default function Footer() {
   const year = new Date().getFullYear()
@@ -63,6 +64,13 @@ export default function Footer() {
           <p className="text-xs text-text-3 font-body">
             © {year} Bonito's Car. Todos os direitos reservados.
           </p>
+          <button
+            type="button"
+            onClick={openPrivacyPreferences}
+            className="text-xs text-text-3 hover:text-text-1 transition-colors font-body min-h-11 px-2"
+          >
+            Preferências de privacidade
+          </button>
           <a
             href={WA_LINKS.general}
             target="_blank"
