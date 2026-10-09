@@ -62,6 +62,32 @@ Os comandos são `Arguments` (formato gtag), o único que o GTM interpreta como
 comando de consentimento. Como ficam antes de `gtm.js`, o GTM aplica o estado
 antes de disparar qualquer tag. Sinais de publicidade nunca são concedidos.
 
+### Comandos gtag na página × APIs nativas do GTM
+
+O Google documenta dois caminhos para o consentimento com GTM:
+
+| Caminho | Onde roda | Quando usar |
+|---|---|---|
+| Comandos `gtag('consent', ...)` enfileirados no `dataLayer` antes do container | Código do site | Implementação própria, sem CMP. **É o caminho usado aqui.** |
+| APIs de modelo `setDefaultConsentState` / `updateConsentState` / `gtagSet` | Modelo personalizado (ex.: CMP) no acionador *Consent Initialization - All Pages* | Quando uma CMP gerencia o consentimento dentro do GTM |
+
+Regras do caminho adotado, conforme a documentação:
+
+- o `default` precisa ser o primeiro comando de consentimento; um `update`
+  recebido antes dele é descartado. Aqui o `default` vem imediatamente antes
+  do `update` e ambos antes do `gtm.js`;
+- o estado não persiste entre páginas: o site o declara em todo carregamento
+  em que o GTM é iniciado;
+- `wait_for_update` não é usado porque o GTM só carrega com a decisão já
+  tomada.
+
+Consequências para o container:
+
+- **não** adicionar modelo de CMP nem tag de consentimento no acionador
+  *Consent Initialization*: criaria uma segunda fonte de estado;
+- se no futuro uma CMP for adotada, migrar o consentimento para ela e remover
+  os comandos de `src/lib/analytics.ts` no mesmo PR.
+
 Na revogação, com o GTM ativo, o site envia
 `gtag('consent', 'update', { analytics_storage: 'denied' })`, limpa os cookies
 e recarrega a página.
@@ -133,9 +159,14 @@ itens abaixo só podem ser validados com o container real:
 
 1. **Bloqueio:** janela anônima, DevTools → Network filtrando `google`:
    nenhuma requisição antes da escolha e após "Continuar sem métricas".
-2. **Consentimento no GTM Preview:** após "Permitir métricas", a aba
-   *Consent* mostra `analytics_storage: granted` e os três sinais de anúncios
-   `denied` já no evento *Consent Initialization*/*Initialization*.
+2. **Consentimento no Tag Assistant (GTM Preview):** após "Permitir
+   métricas", os comandos aparecem como eventos *Consent* antes de *Consent
+   Initialization*. Na aba *Consent* do evento *Initialization*: coluna
+   *On-page Default* com tudo `Denied`, *On-page Update* com
+   `analytics_storage: Granted` e *Current State* com `analytics_storage`
+   `Granted` e `ad_storage`, `ad_user_data`, `ad_personalization` `Denied`.
+   A tag GA4 deve aparecer como disparada com a verificação de consentimento
+   atendida.
 3. **SPA no GA4 DebugView:** navegar `/` → `/leves` → `/pesados` →
    `/orcamento` e voltar com o botão do navegador. Para cada navegação:
    exatamente 1 `page_view`, `page_location` correto, `page_title` da rota
