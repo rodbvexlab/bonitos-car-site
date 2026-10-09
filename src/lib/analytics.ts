@@ -20,6 +20,15 @@ function resolveGtmId(): string | null {
 
 let gtmInitialized = false
 
+type DataLayerWindow = Window & { dataLayer?: unknown[] }
+
+// Canonical gtag shape: GTM only processes consent commands pushed as
+// Arguments objects, in order, before the tags that depend on them.
+function gtag(..._args: unknown[]): void {
+  const w = window as DataLayerWindow
+  ;(w.dataLayer = w.dataLayer || []).push(arguments)
+}
+
 export function getConsent(): AnalyticsConsent | null {
   try {
     const value = window.localStorage.getItem(CONSENT_STORAGE_KEY)
@@ -45,21 +54,20 @@ export function initAnalytics(): void {
     const gtmId = resolveGtmId()
     if (!gtmId) return
 
-    const w = window as Window & { dataLayer?: unknown[] }
-    const dataLayer = (w.dataLayer = w.dataLayer || [])
-    // Canonical gtag shape: GTM reads consent commands from Arguments objects.
-    function gtag(..._args: unknown[]) {
-      dataLayer.push(arguments)
-    }
-    // Visitor consented to metrics only: keep advertising storage denied for
-    // any Google tag configured in the container.
+    // Consent Mode v2: everything denied by default, then only analytics
+    // storage is granted. Both commands sit in the dataLayer ahead of the
+    // gtm.js event, so GTM applies them before any tag fires. Advertising
+    // signals stay denied: the visitor consented to metrics only.
     gtag('consent', 'default', {
-      analytics_storage: 'granted',
+      analytics_storage: 'denied',
       ad_storage: 'denied',
       ad_user_data: 'denied',
       ad_personalization: 'denied',
     })
-    dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' })
+    gtag('set', 'ads_data_redaction', true)
+    gtag('consent', 'update', { analytics_storage: 'granted' })
+    const w = window as DataLayerWindow
+    ;(w.dataLayer = w.dataLayer || []).push({ 'gtm.start': Date.now(), event: 'gtm.js' })
 
     if (!document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${gtmId}"]`)) {
       const script = document.createElement('script')
@@ -78,11 +86,19 @@ export function grantConsent(): void {
   initAnalytics()
 }
 
-/** Stores the refusal. When GTM is already running, clears GA cookies and reloads to unload it. */
+/**
+ * Stores the refusal. When GTM is already running, signals the denial to the
+ * loaded tags, clears GA cookies and reloads so GTM is no longer on the page.
+ */
 export function denyConsent(): void {
   const wasActive = gtmInitialized
   storeConsent('denied')
   if (!wasActive) return
+  try {
+    gtag('consent', 'update', { analytics_storage: 'denied' })
+  } catch {
+    // Reload below unloads GTM regardless.
+  }
   clearAnalyticsCookies()
   window.location.reload()
 }
@@ -91,13 +107,18 @@ export function openPrivacyPreferences(): void {
   window.dispatchEvent(new Event(PRIVACY_OPEN_EVENT))
 }
 
-// Best-effort removal of GA first-party cookies (_ga, _ga_<id>, _gid, _gat*).
+// Best-effort removal of Google first-party cookies readable from JS:
+// _ga, _ga_<id>, _gid, _gat* (Analytics) and _gcl_*, _gac_* (never written
+// while ad_storage is denied; removed defensively). GA sets them on the widest
+// domain allowed (e.g. .bonitoscar.com.br) with path "/", so every parent
+// domain of the current host is tried. HttpOnly or non-"/" path cookies are out
+// of reach and documented in docs/ANALYTICS.md.
 function clearAnalyticsCookies(): void {
   try {
     const names = document.cookie
       .split(';')
       .map((part) => part.split('=')[0].trim())
-      .filter((name) => /^(_ga(_.+)?|_gid|_gat(_.+)?)$/.test(name))
+      .filter((name) => /^(_ga(_.+)?|_gid|_gat(_.+)?|_gcl_.+|_gac_.+)$/.test(name))
 
     const labels = window.location.hostname.split('.')
     const domains: (string | null)[] = [null]
