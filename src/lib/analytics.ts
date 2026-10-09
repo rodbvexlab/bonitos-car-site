@@ -29,7 +29,13 @@ function gtag(..._args: unknown[]): void {
   ;(w.dataLayer = w.dataLayer || []).push(arguments)
 }
 
+// Choice made on this page load. Takes precedence over storage so an explicit
+// choice works even when localStorage is unavailable or a write fails; it is
+// lost on reload, which falls back to the safe "no consent" state.
+let pageConsent: AnalyticsConsent | null = null
+
 export function getConsent(): AnalyticsConsent | null {
+  if (pageConsent) return pageConsent
   try {
     const value = window.localStorage.getItem(CONSENT_STORAGE_KEY)
     return value === 'granted' || value === 'denied' ? value : null
@@ -39,6 +45,7 @@ export function getConsent(): AnalyticsConsent | null {
 }
 
 function storeConsent(value: AnalyticsConsent): void {
+  pageConsent = value
   try {
     window.localStorage.setItem(CONSENT_STORAGE_KEY, value)
   } catch {
@@ -107,25 +114,41 @@ export function openPrivacyPreferences(): void {
   window.dispatchEvent(new Event(PRIVACY_OPEN_EVENT))
 }
 
-// Best-effort removal of Google first-party cookies readable from JS:
-// _ga, _ga_<id>, _gid, _gat* (Analytics) and _gcl_*, _gac_* (never written
-// while ad_storage is denied; removed defensively). GA sets them on the widest
-// domain allowed (e.g. .bonitoscar.com.br) with path "/", so every parent
-// domain of the current host is tried. HttpOnly or non-"/" path cookies are out
-// of reach and documented in docs/ANALYTICS.md.
+// Registrable domain of the production site. Cookie removal never goes above
+// it, so public suffixes such as ".com.br" are never targeted.
+const SITE_COOKIE_DOMAIN = 'bonitoscar.com.br'
+
+// Domains a GA cookie for the current host can live on: host-only, the host
+// itself, and its parents down to SITE_COOKIE_DOMAIN. On any other host
+// (localhost, preview domains) only the host itself is tried.
+function analyticsCookieDomains(hostname: string): (string | null)[] {
+  const host = hostname.toLowerCase()
+  const domains: (string | null)[] = [null]
+  if (host !== SITE_COOKIE_DOMAIN && !host.endsWith(`.${SITE_COOKIE_DOMAIN}`)) {
+    if (host.includes('.')) domains.push(`.${host}`)
+    return domains
+  }
+  const labels = host.split('.')
+  const minLabels = SITE_COOKIE_DOMAIN.split('.').length
+  for (let i = 0; labels.length - i >= minLabels; i++) {
+    domains.push(`.${labels.slice(i).join('.')}`)
+  }
+  return domains
+}
+
+// Best-effort removal of Google Analytics first-party cookies readable from
+// JS: _ga, _ga_<id>, _gid and _gat*. Any other cookie is left untouched. GA
+// sets them with path "/" on the widest allowed domain (.bonitoscar.com.br in
+// production). HttpOnly or non-"/" path cookies are out of reach and
+// documented in docs/ANALYTICS.md.
 function clearAnalyticsCookies(): void {
   try {
     const names = document.cookie
       .split(';')
       .map((part) => part.split('=')[0].trim())
-      .filter((name) => /^(_ga(_.+)?|_gid|_gat(_.+)?|_gcl_.+|_gac_.+)$/.test(name))
+      .filter((name) => /^(_ga(_.+)?|_gid|_gat(_.+)?)$/.test(name))
 
-    const labels = window.location.hostname.split('.')
-    const domains: (string | null)[] = [null]
-    for (let i = 0; i < labels.length - 1; i++) {
-      domains.push(`.${labels.slice(i).join('.')}`)
-    }
-
+    const domains = analyticsCookieDomains(window.location.hostname)
     const expired = 'expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
     for (const name of names) {
       for (const domain of domains) {

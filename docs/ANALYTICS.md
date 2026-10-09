@@ -38,8 +38,11 @@ Chave no `localStorage`: `bonitoscar_analytics_consent`.
 | `denied` | Aviso oculto. GTM não carrega nas visitas seguintes. |
 
 Se o `localStorage` estiver indisponível (modo privado restrito, dados de site
-bloqueados), a escolha vale apenas para a página atual e o aviso volta na
-próxima visita. Nenhum identificador de usuário é criado pelo site.
+bloqueados), a escolha explícita é mantida em memória e vale para a página
+atual, inclusive na navegação entre rotas: aceitar carrega o GTM, recusar
+mantém o bloqueio. Ao recarregar, a memória se perde e o site volta ao estado
+seguro (aviso visível, GTM não carregado). Nenhum identificador de usuário é
+criado pelo site.
 
 ## Consent Mode v2
 
@@ -136,10 +139,22 @@ de `applyRouteSeo`. Não implementar antes da confirmação.
 
 ## Revogação e cookies
 
-Ao revogar (`granted` → `denied`), o site remove em melhor esforço `_ga`,
-`_ga_*`, `_gid`, `_gat*` e, defensivamente, `_gcl_*` e `_gac_*`, tentando o
-host atual e todos os domínios pai (`.www.bonitoscar.com.br`,
-`.bonitoscar.com.br`, `.com.br`), com `path=/`.
+Ao revogar (`granted` → `denied`), o site remove em melhor esforço apenas os
+cookies do Google Analytics: `_ga`, `_ga_*`, `_gid` e `_gat*`, com `path=/`.
+Os demais cookies (inclusive `_gcl_*`/`_gac_*` do Google Ads, que não são
+gravados com `ad_storage` negado) não são tocados.
+
+Domínios tentados, limitados ao domínio registrável do site
+(`SITE_COOKIE_DOMAIN = 'bonitoscar.com.br'` em `src/lib/analytics.ts`):
+
+| Host | Domínios |
+|---|---|
+| `www.bonitoscar.com.br` | host-only, `.www.bonitoscar.com.br`, `.bonitoscar.com.br` |
+| `bonitoscar.com.br` | host-only, `.bonitoscar.com.br` |
+| outro host (preview, localhost) | host-only e `.<host>` |
+
+Sufixos públicos como `.com.br` nunca são usados. Se o domínio do site mudar,
+atualizar `SITE_COOKIE_DOMAIN`.
 
 Limitações:
 
@@ -149,6 +164,8 @@ Limitações:
   personalizada no GTM) não são removidos; o padrão do GA4 é `/`;
 - cookies em domínios do Google (terceiros) não são acessíveis ao site; com
   `ad_storage` negado, o GA4 não os utiliza;
+- em hosts de preview fora de `bonitoscar.com.br`, cookies que o GA4 tenha
+  gravado num domínio pai do host não são removidos;
 - dados já enviados ao GA4 antes da revogação permanecem na propriedade
   (retenção configurada no GA4).
 
