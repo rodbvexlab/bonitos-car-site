@@ -1,10 +1,11 @@
 const SITE_URL = 'https://www.bonitoscar.com.br'
 const SITE_NAME = "Bonito's Car"
+// Brand card (logo over the darkened workshop) shared by every route's link preview.
+const OG_IMAGE = '/assets/og-image.jpg'
 
 interface RouteSeo {
   title: string
   description: string
-  image: string
 }
 
 const ROUTE_SEO: Record<string, RouteSeo> = {
@@ -12,32 +13,27 @@ const ROUTE_SEO: Record<string, RouteSeo> = {
     title: "Bonito's Car | Funilaria e Pintura Automotiva em São Paulo",
     description:
       'Funilaria técnica, pintura em estufa e recuperação estrutural para carros, SUVs, caminhões e frotas em São Paulo. 20+ anos de experiência. Orçamento sem compromisso.',
-    image: '/assets/hero-leves-real-desktop.webp',
   },
   '/leves': {
     title: "Funilaria e Pintura de Carros em São Paulo | Bonito's Car",
     description:
       'Funilaria técnica, pintura em estufa e estética automotiva para carros, SUVs e utilitários na Vila Margarida, São Paulo. Orçamento sem compromisso.',
-    image: '/assets/hero-leves-real-desktop.webp',
   },
   '/pesados': {
     title: "Funilaria e Pintura de Caminhão em São Paulo | Bonito's Car",
     description:
       'Funilaria industrial, pintura em estufa e recuperação estrutural de cabine para caminhões, carretas e frotas em São Paulo. Orçamento sem compromisso.',
-    image: '/assets/hero-pesados-desktop.webp',
   },
   '/orcamento': {
     title: "Solicitar Orçamento de Funilaria e Pintura | Bonito's Car",
     description:
       'Informe o veículo e o serviço desejado e receba o orçamento de funilaria e pintura pelo WhatsApp. Atendimento em São Paulo para carros, caminhões e frotas.',
-    image: '/assets/hero-leves-real-desktop.webp',
   },
 }
 
 const NOT_FOUND_SEO: RouteSeo = {
   title: `Página não encontrada | ${SITE_NAME}`,
   description: 'A página que você procura não existe. Volte para a página inicial da Bonito\'s Car.',
-  image: ROUTE_SEO['/'].image,
 }
 
 function normalizePath(pathname: string) {
@@ -74,7 +70,7 @@ export function applyRouteSeo(pathname: string) {
   const known = ROUTE_SEO[path]
   const seo = known ?? NOT_FOUND_SEO
   const url = `${SITE_URL}${path === '/' ? '/' : path}`
-  const image = `${SITE_URL}${seo.image}`
+  const image = `${SITE_URL}${OG_IMAGE}`
 
   document.title = seo.title
   setMeta('meta[name="description"]', 'name', 'description', seo.description)
