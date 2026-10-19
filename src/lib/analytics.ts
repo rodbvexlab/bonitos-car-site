@@ -8,6 +8,23 @@ export type AnalyticsConsent = 'granted' | 'denied'
 export const CONSENT_STORAGE_KEY = 'bonitoscar_analytics_consent'
 export const PRIVACY_OPEN_EVENT = 'bonitoscar:privacy-preferences'
 
+export type CommercialEventName =
+  | 'whatsapp_click'
+  | 'quote_start'
+  | 'phone_click'
+  | 'service_cta_click'
+
+export type AnalyticsPageType = 'home' | 'leves' | 'pesados' | 'orcamento' | 'not_found'
+export type AnalyticsVehicleType = 'leves' | 'pesados'
+
+export interface CommercialEventParams {
+  page_type: AnalyticsPageType
+  vehicle_type?: AnalyticsVehicleType
+  cta_location: string
+  cta_name: string
+  service_type?: string
+}
+
 const DEFAULT_GTM_ID = 'GTM-WBNHKVGV'
 const GTM_ID_PATTERN = /^GTM-[A-Z0-9]+$/
 
@@ -21,6 +38,37 @@ function resolveGtmId(): string | null {
 let gtmInitialized = false
 
 type DataLayerWindow = Window & { dataLayer?: unknown[] }
+
+/** Map an application route to a stable, non-personal analytics value. */
+export function getAnalyticsPageType(pathname: string): AnalyticsPageType {
+  if (pathname === '/') return 'home'
+  if (pathname === '/leves') return 'leves'
+  if (pathname === '/pesados') return 'pesados'
+  if (pathname === '/orcamento') return 'orcamento'
+  return 'not_found'
+}
+
+/** Resolve only the vehicle category encoded by a known route. */
+export function getAnalyticsVehicleType(pathname: string): AnalyticsVehicleType | undefined {
+  if (pathname === '/leves') return 'leves'
+  if (pathname === '/pesados') return 'pesados'
+  return undefined
+}
+
+/** Send a commercial event only after GTM has been initialized with consent. */
+export function trackCommercialEvent(
+  event: CommercialEventName,
+  params: CommercialEventParams,
+): void {
+  try {
+    if (!gtmInitialized || getConsent() !== 'granted') return
+    const w = window as DataLayerWindow
+    if (!w.dataLayer) return
+    w.dataLayer.push({ event, ...params })
+  } catch {
+    // Tracking must never interfere with navigation or a contact action.
+  }
+}
 
 // Canonical gtag shape: GTM only processes consent commands pushed as
 // Arguments objects, in order, before the tags that depend on them.

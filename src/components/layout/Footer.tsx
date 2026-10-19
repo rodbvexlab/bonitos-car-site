@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { LOCATIONS, WA_LINKS } from '../../lib/data'
-import { openPrivacyPreferences } from '../../lib/analytics'
+import { getAnalyticsPageType, getAnalyticsVehicleType, openPrivacyPreferences, trackCommercialEvent } from '../../lib/analytics'
 
 export default function Footer() {
+  const location = useLocation()
   const year = new Date().getFullYear()
 
   return (
@@ -36,6 +37,23 @@ export default function Footer() {
                   key={link.to}
                   to={link.to}
                   className="text-sm text-text-3 hover:text-text-1 transition-colors duration-200 font-body"
+                  onClick={() => {
+                    if (link.to === '/orcamento') {
+                      trackCommercialEvent('quote_start', {
+                        page_type: getAnalyticsPageType(location.pathname),
+                        vehicle_type: getAnalyticsVehicleType(location.pathname),
+                        cta_location: 'footer_navigation',
+                        cta_name: 'request_quote',
+                      })
+                    } else if (link.to === '/leves' || link.to === '/pesados') {
+                      trackCommercialEvent('service_cta_click', {
+                        page_type: getAnalyticsPageType(location.pathname),
+                        vehicle_type: link.to === '/leves' ? 'leves' : 'pesados',
+                        cta_location: 'footer_navigation',
+                        cta_name: link.to === '/leves' ? 'view_light_services' : 'view_heavy_services',
+                      })
+                    }
+                  }}
                 >
                   {link.label}
                 </Link>
@@ -76,6 +94,12 @@ export default function Footer() {
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-text-3 hover:text-text-1 transition-colors label"
+            onClick={() => trackCommercialEvent('whatsapp_click', {
+              page_type: getAnalyticsPageType(location.pathname),
+              vehicle_type: getAnalyticsVehicleType(location.pathname),
+              cta_location: 'footer_contact',
+              cta_name: 'contact_whatsapp',
+            })}
           >
             +55 11 98432-5295
           </a>

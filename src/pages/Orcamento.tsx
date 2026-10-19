@@ -5,6 +5,7 @@ import Header from '../components/layout/Header'
 import Footer from '../components/layout/Footer'
 import FadeIn from '../components/ui/FadeIn'
 import { WA_NUMBER } from '../lib/data'
+import { trackCommercialEvent } from '../lib/analytics'
 
 const heroStagger = {
   hidden: {},
@@ -66,6 +67,14 @@ export default function Orcamento() {
       `Descrição: ${form.description}`,
     ].join('\n')
 
+    // This form opens WhatsApp; it does not submit to a verified backend.
+    // Send only the event name and safe categorical context, never field values.
+    trackCommercialEvent('whatsapp_click', {
+      page_type: 'orcamento',
+      vehicle_type: form.category || undefined,
+      cta_location: 'quote_form',
+      cta_name: 'send_quote_to_whatsapp',
+    })
     window.location.href = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`
   }
 

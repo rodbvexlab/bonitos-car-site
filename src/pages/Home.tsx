@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Header from '../components/layout/Header'
-import { openPrivacyPreferences } from '../lib/analytics'
+import { openPrivacyPreferences, trackCommercialEvent } from '../lib/analytics'
 
 // ── Design tokens ──────────────────────────────────────────
 const EASE = [0.16, 1, 0.3, 1] as const
@@ -68,6 +68,12 @@ function CategoryCard({
         onMouseLeave={() => setHovered(false)}
         onFocus={() => setHovered(true)}
         onBlur={() => setHovered(false)}
+        onClick={() => trackCommercialEvent('service_cta_click', {
+          page_type: 'home',
+          vehicle_type: cat.id,
+          cta_location: 'home_service_card',
+          cta_name: 'view_vehicle_services',
+        })}
         aria-label={`Ver serviços para ${cat.name} ${cat.sub}`}
       >
         <motion.div
@@ -325,6 +331,11 @@ export default function Home() {
               style={{ letterSpacing: '0.18em', color: 'rgba(255,255,255,0.35)' }}
               onMouseEnter={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.75)')}
               onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.35)')}
+              onClick={() => trackCommercialEvent('quote_start', {
+                page_type: 'home',
+                cta_location: 'home_footer',
+                cta_name: 'request_quote',
+              })}
             >
               Solicitar Orçamento →
             </Link>
