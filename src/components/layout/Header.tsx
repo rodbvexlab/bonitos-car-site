@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { WA_LINKS } from '../../lib/data'
+import { getAnalyticsPageType, getAnalyticsVehicleType, trackCommercialEvent } from '../../lib/analytics'
 
 interface HeaderProps {
   variant?: 'gateway' | 'page'
@@ -72,6 +73,23 @@ export default function Header({ variant = 'page' }: HeaderProps) {
                   : 'hover:text-white/80'
                 }
               `}
+              onClick={() => {
+                if (link.to === '/orcamento') {
+                  trackCommercialEvent('quote_start', {
+                    page_type: getAnalyticsPageType(location.pathname),
+                    vehicle_type: getAnalyticsVehicleType(location.pathname),
+                    cta_location: 'header_desktop',
+                    cta_name: 'request_quote',
+                  })
+                } else {
+                  trackCommercialEvent('service_cta_click', {
+                    page_type: getAnalyticsPageType(location.pathname),
+                    vehicle_type: link.to === '/leves' ? 'leves' : 'pesados',
+                    cta_location: 'header_desktop',
+                    cta_name: link.to === '/leves' ? 'view_light_services' : 'view_heavy_services',
+                  })
+                }
+              }}
             >
               {link.label}
             </Link>
@@ -85,6 +103,12 @@ export default function Header({ variant = 'page' }: HeaderProps) {
             target="_blank"
             rel="noopener noreferrer"
             className="btn-glass hidden md:inline-flex text-xs"
+            onClick={() => trackCommercialEvent('whatsapp_click', {
+              page_type: getAnalyticsPageType(location.pathname),
+              vehicle_type: getAnalyticsVehicleType(location.pathname),
+              cta_location: 'header_desktop',
+              cta_name: 'contact_whatsapp',
+            })}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
@@ -121,6 +145,23 @@ export default function Header({ variant = 'page' }: HeaderProps) {
                   key={link.to}
                   to={link.to}
                   className="label py-3 border-b border-white/5 last:border-0 hover:text-white/80 transition-colors"
+                  onClick={() => {
+                    if (link.to === '/orcamento') {
+                      trackCommercialEvent('quote_start', {
+                        page_type: getAnalyticsPageType(location.pathname),
+                        vehicle_type: getAnalyticsVehicleType(location.pathname),
+                        cta_location: 'header_mobile_menu',
+                        cta_name: 'request_quote',
+                      })
+                    } else {
+                      trackCommercialEvent('service_cta_click', {
+                        page_type: getAnalyticsPageType(location.pathname),
+                        vehicle_type: link.to === '/leves' ? 'leves' : 'pesados',
+                        cta_location: 'header_mobile_menu',
+                        cta_name: link.to === '/leves' ? 'view_light_services' : 'view_heavy_services',
+                      })
+                    }
+                  }}
                 >
                   {link.label}
                 </Link>
@@ -130,6 +171,12 @@ export default function Header({ variant = 'page' }: HeaderProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn-glass mt-3 w-full justify-center"
+                onClick={() => trackCommercialEvent('whatsapp_click', {
+                  page_type: getAnalyticsPageType(location.pathname),
+                  vehicle_type: getAnalyticsVehicleType(location.pathname),
+                  cta_location: 'header_mobile_menu',
+                  cta_name: 'contact_whatsapp',
+                })}
               >
                 Contato via WhatsApp
               </a>

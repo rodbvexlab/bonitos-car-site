@@ -98,7 +98,7 @@ e recarrega a página.
 ## Configuração necessária no GTM
 
 1. **Admin → Configurações do container → Ativar visão geral de consentimento.**
-2. **Tag Google (GA4)** com o ID de medição `G-XXXXXXXXXX`:
+2. **Tag Google (GA4)** com o ID de medição `G-ELNK9H8X1Z`:
    - acionador **Initialization - All Pages**. Não é preciso tag de
      consentimento no acionador *Consent Initialization*: o estado já chega
      antes do `gtm.js`;
@@ -116,6 +116,108 @@ e recarrega a página.
    "Visualizações de página" com "Mudanças de página baseadas em eventos do
    histórico do navegador" ativada. Desativar "Interações com formulários"
    (o site não envia conteúdo de formulário e o evento não agrega valor agora).
+
+## Eventos comerciais — Sprint 02B
+
+O site envia eventos próprios ao `dataLayer` somente quando `analytics_storage`
+foi autorizado e o GTM já foi inicializado. O helper central em
+`src/lib/analytics.ts` também confere o consentimento antes de cada envio.
+Sem aceite, uma interação não cria `dataLayer` nem é enfileirada para envio
+posterior. Os handlers rodam somente em cliques/ações reais, nunca em render ou
+efeitos do React.
+
+O payload usa apenas estes campos: `event`, `page_type`, `vehicle_type`,
+`cta_location` e `cta_name`. `service_type` está reservado e só deve ser
+adicionado quando uma ação representar um serviço específico. Valores atuais
+de `vehicle_type`: `leves` e `pesados`; `page_type`: `home`, `leves`,
+`pesados`, `orcamento` e `not_found`. Campos contextuais sem valor conhecido
+são omitidos. Nenhum valor de formulário, telefone, nome, descrição ou texto de
+URL/mensagem do WhatsApp é enviado.
+
+### Inventário de interações comerciais
+
+| Componente / ponto | Rota | Ação | Evento e contexto |
+|---|---|---|---|
+| Cards de categoria da Home | `/` | Abrir serviços de veículos leves ou pesados | `service_cta_click`; `home_service_card`; `vehicle_type` conforme card |
+| Header, navegação desktop e menu mobile | Todas | Abrir página Leves ou Pesados | `service_cta_click`; `header_desktop` ou `header_mobile_menu` |
+| CTA de orçamento no header desktop/mobile | Todas | Abrir `/orcamento` | `quote_start`; localização do header |
+| CTA inferior da Home | `/` | Abrir `/orcamento` | `quote_start`; `home_footer` |
+| Botão “Solicitar Avaliação” | `/leves`, `/pesados` | Abrir formulário com a categoria selecionada | `quote_start`; `service_hero`; veículo correspondente |
+| CTA de orçamento da seção final | `/leves`, `/pesados` | Abrir `/orcamento` | `quote_start`; `service_cta_section`; veículo correspondente |
+| WhatsApp do header desktop e menu mobile | Todas | Abrir conversa externa | `whatsapp_click`; localização do header; contexto da rota |
+| WhatsApp do hero e da seção final | `/leves`, `/pesados` | Abrir conversa externa | `whatsapp_click`; hero ou seção CTA; veículo correspondente |
+| WhatsApp flutuante | `/leves`, `/pesados`, `/orcamento`, 404 | Abrir conversa externa | `whatsapp_click`; `floating_whatsapp`; contexto da rota |
+| Número no footer | Todas | Abrir conversa externa via WhatsApp | `whatsapp_click`; `footer_contact` |
+| Formulário de orçamento válido | `/orcamento` | Montar mensagem e abrir WhatsApp | `whatsapp_click`; `quote_form`; veículo selecionado |
+| Links de navegação do footer | Todas | Abrir Leves, Pesados ou Orçamento | `service_cta_click` para categoria; `quote_start` para Orçamento |
+| Links telefônicos (`tel:`) | Nenhuma | Não há link telefônico acionável no código atual | `phone_click` não é emitido; reavaliar se um link `tel:` for adicionado |
+| Envio de orçamento para backend | Nenhuma | O formulário abre WhatsApp, sem envio verificável ao servidor | `quote_submit` não é emitido |
+
+Os botões de categoria na Home e navegação para as páginas de serviço não são
+eventos de orçamento. `quote_start` representa clique explícito em um CTA que
+abre o formulário. O botão final do formulário é medido como
+`whatsapp_click`, após validação local; não se registra envio/recebimento de
+mensagem nem conversão concluída.
+
+### Configuração no GTM (sem publicação pelo repositório)
+
+No container `GTM-WBNHKVGV` (GA4 `G-ELNK9H8X1Z`), criar variáveis do tipo
+**Variável da camada de dados**, versão 2:
+
+| Nome sugerido | Chave da camada de dados |
+|---|---|
+| `DLV - page_type` | `page_type` |
+| `DLV - vehicle_type` | `vehicle_type` |
+| `DLV - cta_location` | `cta_location` |
+| `DLV - cta_name` | `cta_name` |
+| `DLV - service_type` | `service_type` (reservada; ainda não enviada) |
+
+Criar um acionador **Evento personalizado** para cada evento abaixo, com o
+nome exato e correspondência sensível a maiúsculas/minúsculas:
+
+| Acionador | Evento personalizado |
+|---|---|
+| `CE - whatsapp_click` | `whatsapp_click` |
+| `CE - quote_start` | `quote_start` |
+| `CE - service_cta_click` | `service_cta_click` |
+
+Criar uma tag **Google Analytics: evento do GA4** para cada acionador. Usar a
+Google tag/ID `G-ELNK9H8X1Z`, nomear cada evento com o mesmo nome do acionador e
+mapear os parâmetros:
+
+| Parâmetro do GA4 | Variável GTM |
+|---|---|
+| `page_type` | `{{DLV - page_type}}` |
+| `vehicle_type` | `{{DLV - vehicle_type}}` |
+| `cta_location` | `{{DLV - cta_location}}` |
+| `cta_name` | `{{DLV - cta_name}}` |
+
+Adicionar `service_type` somente quando o código passar a enviar essa
+classificação. Exigir `analytics_storage` nas configurações de consentimento
+de cada tag GA4 como salvaguarda adicional. A decisão primária continua sendo
+do site: ele não carrega GTM sem aceite; no aceite, declara os sinais do
+Consent Mode v2 antes de `gtm.js`. Não criar outra tag de consentimento,
+acionador para `All Pages`/histórico, nem tag de `quote_submit` ou `phone_click`
+sem uma ação real correspondente. Revisar no Preview e publicar o container
+manualmente após revisão; este trabalho não altera nem publica o GTM.
+
+### Matriz de QA comercial
+
+| Cenário | Desktop | Mobile | Resultado esperado | Execução local |
+|---|---|---|---|
+| Sem escolha de consentimento ou com recusa | Home → Leves | Não executado | Sem requisição ao GTM e sem eventos comerciais no `dataLayer` | Passou no desktop; GTM/dataLayer ausentes antes e depois da recusa |
+| Aceite e um clique em CTA de serviço | Card Leves na Home | Não executado | Exatamente um `service_cta_click` com rota, veículo e localização coerentes | Passou no desktop; payload conferido |
+| Aceite e um clique em CTA de orçamento | Header → `/orcamento` | Não executado | Exatamente um `quote_start`; navegação para `/orcamento` continua funcionando | Passou no desktop; evento único e veículo coerente |
+| Aceite e um clique em WhatsApp | Hero Leves | Menu mobile na Home | Exatamente um `whatsapp_click`; abertura externa preservada | Passou em ambos; evento único e localização correta |
+| Formulário válido | Não executado | `/orcamento?cat=leves` | Um `whatsapp_click`; nenhum campo pessoal aparece no objeto de evento | Passou no mobile; payload sem dados pessoais, sem `quote_submit` |
+| Página com número de contato | Nenhum link existente | Nenhum link existente | Nenhum `phone_click`; não existe link `tel:` hoje | Passou; busca no código não encontrou `tel:` acionável |
+| Navegação SPA entre rotas | Home → Leves → Orçamento | Não executado | Navegação funcional; `page_view` segue somente a medição otimizada do GA4 | Passou no desktop; nenhum `page_view` manual no `dataLayer` |
+| Build | `npm run build` | Não aplicável | TypeScript e build Vite sem erros | Passou |
+
+O teste local pode bloquear a requisição externa do GTM e inspecionar o
+`dataLayer`; a confirmação de coleta real, consentimento no Tag Assistant e
+`page_view` continua dependendo do container/staging/GA4 publicados. Não
+duplicar a medição otimizada com tags manuais de `page_view`.
 
 ## SPA, page_view e document.title
 

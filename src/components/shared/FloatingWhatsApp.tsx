@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { WA_LINKS } from '../../lib/data'
 import { useLocation } from 'react-router-dom'
+import { getAnalyticsPageType, getAnalyticsVehicleType, trackCommercialEvent } from '../../lib/analytics'
 
 export default function FloatingWhatsApp() {
   const location = useLocation()
@@ -20,6 +21,12 @@ export default function FloatingWhatsApp() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Falar no WhatsApp"
+      onClick={() => trackCommercialEvent('whatsapp_click', {
+        page_type: getAnalyticsPageType(location.pathname),
+        vehicle_type: getAnalyticsVehicleType(location.pathname),
+        cta_location: 'floating_whatsapp',
+        cta_name: 'contact_whatsapp',
+      })}
       className="fixed bottom-7 right-7 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl"
       style={{ background: '#25D366' }}
       initial={{ scale: 0, opacity: 0 }}
